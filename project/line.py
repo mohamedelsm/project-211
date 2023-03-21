@@ -51,22 +51,33 @@ def check_color():
     
 def find_zone():
     while True:
+        # turn for a bit
         MOTORL.set_power(55)
         MOTORR.set_power(-50)
         time.sleep(2)
-        MOTORL.set_dps(360)
-        MOTORL.set_dps(360)
+
+        # go forward and look for color
+        MOTORL.set_power(20)
+        MOTORL.set_power(20)
+        t_end = time.time() + 60 * 2
+        while time.time() < t_end:
+            # check for the color
+            color = check_color()
+            if color != None:
+                MOTORL.set_power(0)
+                MOTORL.set_power(0)
+                return color
+            
+        # go back to original position
+        MOTORL.set_power(-20)
+        MOTORL.set_power(-20)
         time.sleep(2)
-        MOTORL.set_dps(-360)
-        MOTORL.set_dps(-360)
-        time.sleep(2)
-        
-        # check for the color
-        color = check_color()
-        if color != None:
-            MOTORL.set_power(0)
-            MOTORL.set_power(0)
-            return color
+
+def reset_motor(): 
+    MOTORL.set_dps(0)
+    MOTORL.set_dps(0)
+    MOTORL.set_power(0)
+    MOTORR.set_power(0)  
     
 
 # main entry point
@@ -98,6 +109,7 @@ try:
             # find the zone
             print("looking for zone")
             zone_color = find_zone()
+            print("found " + str(zone_color) + " zone")
         else:
             MOTORL.set_power(20)
             MOTORR.set_power(20)
@@ -106,7 +118,6 @@ try:
         # do smth with the rgb values
 
         
-            
 except KeyboardInterrupt:
     print("Ending by keyboard interrupt")
     reset_brick() # Turn off everything on the brick's hardware, and reset it

@@ -27,6 +27,47 @@ def closest(color):
     smallest_distance = colors_name[index_of_smallest[0][0]]
     return smallest_distance 
 
+def check_color():
+    # change rgb sensor
+    rgb = COLOR_SENSOR.get_rgb()
+    R=rgb[0]
+    G=rgb[1]
+    B=rgb[2]
+
+    if R in range(110,190) and G in range(10,28) and B in range(10,16):
+        return "RED"
+    elif R in range(15,30) and G in range(15,30) and B in range(25,40):
+        return "BLUE"
+    elif R in range(15,45) and G in range(40,75) and B in range(5,25):
+        return "GREEN"
+    elif R in range(175, 205) and G in range(28, 45) and B in range(10,25):
+        return "ORANGE"
+    elif R in range(180, 220) and G in range(120, 135) and B in range(17,27):
+        return "YELLOW"
+    elif R in range(100, 140) and G in range(8, 20) and B in range(20,35):
+        return "PURPLE"
+    else:
+        return None
+    
+def find_zone():
+    while True:
+        MOTORL.set_power(55)
+        MOTORR.set_power(-50)
+        time.sleep(2)
+        MOTORL.set_dps(360)
+        MOTORL.set_dps(360)
+        time.sleep(2)
+        MOTORL.set_dps(-360)
+        MOTORL.set_dps(-360)
+        time.sleep(2)
+        
+        # check for the color
+        color = check_color()
+        if color != None:
+            MOTORL.set_power(0)
+            MOTORL.set_power(0)
+            return color
+    
 
 # main entry point
 try:
@@ -44,22 +85,24 @@ try:
 
         if color == "RED":
             print("red")
-            MOTORL.set_power(-15)
-            MOTORR.set_power(70)
+            MOTORL.set_power(-50)
+            MOTORR.set_power(50)
         elif color == "BLUE":
             print("blue")
-            MOTORL.set_power(70)
-            MOTORR.set_power(-15)
+            MOTORL.set_power(50)
+            MOTORR.set_power(-50)
         elif color == "GREEN":
             print("green")
             MOTORL.set_power(0)
             MOTORR.set_power(0)
+            # find the zone
+            print("looking for zone")
+            zone_color = find_zone()
         else:
             MOTORL.set_power(20)
             MOTORR.set_power(20)
         
         time.sleep(0.1)
-
         # do smth with the rgb values
 
         

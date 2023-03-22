@@ -4,7 +4,10 @@ import math
 
 MOTORL = Motor("A") 
 MOTORR = Motor("D")
+MOTORPLAT = Motor("C")
+MOTORKICK = Motor("B")
 COLOR_SENSOR = EV3ColorSensor(4)
+SIDE_COLOR_SENSOR = EV3ColorSensor(1)
 
 POWER_LIMIT = 40
 SPEED_LIMIT = 360
@@ -19,10 +22,10 @@ wait_ready_sensors()
 def check_color(rgb):
     means = [[0.82230793, 0.11083375, 0.06685832], [0.75654495, 0.17690667, 0.06654838], 
              [0.5586913, 0.37901136, 0.06229734], [0.26811848, 0.58220407, 0.14967744],
-             [0.26986127, 0.28546987, 0.44466886], [0.73325641, 0.10767692, 0.15906667]]
+             [0.454594521, 0.480832567, 0.748704212], [0.967152296, 0.142217565, 0.209920143]]
     std_dev = [[0.0186642, 0.00907358, 0.01105631], [0.02676107, 0.01332406, 0.01422075],
                [0.00557763, 0.00658229, 0.0046249], [0.00875172, 0.01423021, 0.01032464], 
-               [0.01389173, 0.01254777, 0.01502582], [0.01269495, 0.00986052, 0.00567139]]
+               [0.025688715, 0.022795108, 0.020173633], [0.003742952, 0.014803877,	0.0095453699]]
     
     color_names = ["RED", "ORANGE","YELLOW","GREEN","BLUE","PURPLE"]
 
@@ -69,6 +72,29 @@ def find_zone():
         MOTORL.set_power(-20)
         time.sleep(2)
 
+def test_rotate():
+    MOTORPLAT.set_position(360)
+    MOTORPLAT.reset_encoder()
+
+def rotate_platform(color):
+    if color=="RED":
+        MOTORPLAT.set_position(0)
+    elif color=="ORANGE":
+        MOTORPLAT.set_position(60)
+    elif color=="YELLOW":
+        MOTORPLAT.set_position(120)
+    elif color=="GREEN":
+        MOTORPLAT.set_position(180)
+    elif color=="BLUE":
+        MOTORPLAT.set_position(240)
+    elif color=="PURPLE":
+        MOTORPLAT.set_position(300)
+    MOTORPLAT.reset_encoder()
+
+def kick_block():
+    MOTORKICK.set_position(135)
+    MOTORKICK.reset_encoder()
+    
 def reset_motor(): 
     MOTORL.set_dps(0)
     MOTORL.set_dps(0)
@@ -106,6 +132,14 @@ try:
             print("looking for zone")
             zone_color = find_zone()
             print("found " + str(zone_color) + " zone")
+            test_rotate()
+            #rotate_platform(color)
+            kick_block()
+            time.sleep(3)
+            MOTORL.set_position(90)
+            MOTORR.set_position(90)
+            continue
+
         else:
             MOTORL.set_power(20)
             MOTORR.set_power(20)

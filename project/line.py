@@ -1,6 +1,6 @@
 from utils.brick import BP, Motor, TouchSensor, EV3ColorSensor, wait_ready_sensors, reset_brick 
-import numpy as np
 import time
+import math
 
 MOTORL = Motor("A") 
 MOTORR = Motor("D")
@@ -16,38 +16,34 @@ ORIENTTODEG = RB/RW
 print("sensors initializing")
 wait_ready_sensors()
 
+def check_color(rgb):
+    means = [[0.82230793, 0.11083375, 0.06685832], [0.75654495, 0.17690667, 0.06654838], 
+             [0.5586913, 0.37901136, 0.06229734], [0.26811848, 0.58220407, 0.14967744],
+             [0.26986127, 0.28546987, 0.44466886], [0.73325641, 0.10767692, 0.15906667]]
+    std_dev = [[0.0186642, 0.00907358, 0.01105631], [0.02676107, 0.01332406, 0.01422075],
+               [0.00557763, 0.00658229, 0.0046249], [0.00875172, 0.01423021, 0.01032464], 
+               [0.01389173, 0.01254777, 0.01502582], [0.01269495, 0.00986052, 0.00567139]]
+    
+    color_names = ["RED", "ORANGE","YELLOW","GREEN","BLUE","PURPLE"]
 
-def closest(color):
-    colors = np.array([[175, 20, 12],[190, 36, 18],[200, 128, 22],[30, 68, 20],[22, 22, 33],[120,14,28]])
-    colors_name = ["RED", "ORANGE","YELLOW","GREEN","BLUE","PURPLE"]
-    color = np.array(color)
+    for i in range(len(means)):
+        mean = means[i]
+        stdev = std_dev[i]
+        
+        mR, mG, mB = mean
+        sR, sG, sB = stdev
+        r, g, b =rgb
 
-    distances = np.sqrt(np.sum((colors-color)**2,axis=1))
-    index_of_smallest = np.where(distances==np.amin(distances))
-    smallest_distance = colors_name[index_of_smallest[0][0]]
-    return smallest_distance 
+        diffR=(mR-r)/sR   
+        diffG=(mG-g)/sG
+        diffB=(mB-b)/sB
+        std_dist=math.sqrt(diffR**2 + diffG**2 + diffB**2)
 
-def check_color():
-    # change rgb sensor
-    rgb = COLOR_SENSOR.get_rgb()
-    R=rgb[0]
-    G=rgb[1]
-    B=rgb[2]
+        if std_dist < 2:
+            return color_names[i]
+            
+    return None
 
-    if R in range(110,190) and G in range(10,28) and B in range(10,16):
-        return "RED"
-    elif R in range(15,30) and G in range(15,30) and B in range(25,40):
-        return "BLUE"
-    elif R in range(15,45) and G in range(40,75) and B in range(5,25):
-        return "GREEN"
-    elif R in range(175, 205) and G in range(28, 45) and B in range(10,25):
-        return "ORANGE"
-    elif R in range(180, 220) and G in range(120, 135) and B in range(17,27):
-        return "YELLOW"
-    elif R in range(100, 140) and G in range(8, 20) and B in range(20,35):
-        return "PURPLE"
-    else:
-        return None
     
 def find_zone():
     while True:
@@ -92,8 +88,8 @@ try:
     while True:
         rgb = COLOR_SENSOR.get_rgb()
         print(rgb)
-        color = closest(rgb)
-
+        color = check_color(rgb)
+        print(color)
         if color == "RED":
             print("red")
             MOTORL.set_power(-50)

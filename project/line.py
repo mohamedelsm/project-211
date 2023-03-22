@@ -6,8 +6,8 @@ MOTORL = Motor("A")
 MOTORR = Motor("D")
 MOTORPLAT = Motor("C")
 MOTORKICK = Motor("B")
-COLOR_SENSOR = EV3ColorSensor(4)
-SIDE_COLOR_SENSOR = EV3ColorSensor(1)
+COLOR_SENSOR = EV3ColorSensor(1)
+SIDE_COLOR_SENSOR = EV3ColorSensor(4)
 
 POWER_LIMIT = 40
 SPEED_LIMIT = 360
@@ -35,14 +35,20 @@ def check_color(rgb):
         
         mR, mG, mB = mean
         sR, sG, sB = stdev
-        r, g, b =rgb
+        denominator = math.sqrt(rgb[0]**2 + rgb[1]**2 + rgb[2]**2)
+        if denominator == 0:
+            return None
+        r = rgb[0]/denominator
+        g = rgb[1]/denominator
+        b = rgb[2]/denominator
 
-        diffR=(mR-r)/sR   
-        diffG=(mG-g)/sG
-        diffB=(mB-b)/sB
+        diffR=(mR-r)/sR + 0.05  
+        diffG=(mG-g)/sG + 0.05
+        diffB=(mB-b)/sB + 0.05
         std_dist=math.sqrt(diffR**2 + diffG**2 + diffB**2)
-
-        if std_dist < 2:
+        if i == 0:
+            print(std_dist)
+        if std_dist < 4:
             return color_names[i]
             
     return None
@@ -118,27 +124,27 @@ try:
         print(color)
         if color == "RED":
             print("red")
-            MOTORL.set_power(-50)
-            MOTORR.set_power(50)
+            MOTORL.set_power(30)
+            MOTORR.set_power(-30)
         elif color == "BLUE":
             print("blue")
-            MOTORL.set_power(50)
-            MOTORR.set_power(-50)
-        elif color == "GREEN":
-            print("green")
-            MOTORL.set_power(0)
-            MOTORR.set_power(0)
-            # find the zone
-            print("looking for zone")
-            zone_color = find_zone()
-            print("found " + str(zone_color) + " zone")
-            test_rotate()
-            #rotate_platform(color)
-            kick_block()
-            time.sleep(3)
-            MOTORL.set_position(90)
-            MOTORR.set_position(90)
-            continue
+            MOTORL.set_power(-30)
+            MOTORR.set_power(30)
+#         elif color == "GREEN":
+#             print("green")
+#             MOTORL.set_power(0)
+#             MOTORR.set_power(0)
+#             # find the zone
+#             print("looking for zone")
+#             zone_color = find_zone()
+#             print("found " + str(zone_color) + " zone")
+#             test_rotate()
+#             #rotate_platform(color)
+#             kick_block()
+#             time.sleep(3)
+#             MOTORL.set_position(90)
+#             MOTORR.set_position(90)
+#             continue
 
         else:
             MOTORL.set_power(20)

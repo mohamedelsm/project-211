@@ -19,6 +19,40 @@ ORIENTTODEG = RB/RW
 print("sensors initializing")
 wait_ready_sensors()
 
+def side_check_color(rgb):
+    means = [[0.98269282, 0.166543148, 0.079804332], [0.956722739, 0.279694185, 0.075963383], 
+             [0.736488044, 0.672059319, 0.075039654], [0.313354802, 0.927045185, 0.202401399],
+             [0.368746318, 0.608397841, 0.698980325], [0.963167792, 0.175536085, 0.201083857]]
+    std_dev = [[0.004002433, 0.016609388, 0.01300176], [0.00668939, 0.023818665, 0.008397344],
+               [0.00948927, 0.009867564, 0.010167148], [0.027895648, 0.014312723, 0.021143952], 
+               [0.05831743, 0.019102171, 0.039416204], [0.008729752, 0.025987929, 0.017576094]]
+    
+    color_names = ["RED", "ORANGE","YELLOW","GREEN","BLUE","PURPLE"]
+
+    for i in range(len(means)):
+        mean = means[i]
+        stdev = std_dev[i]
+        
+        mR, mG, mB = mean
+        sR, sG, sB = stdev
+        if rgb == [None, None, None]:
+            return None
+        denominator = math.sqrt(rgb[0]**2 + rgb[1]**2 + rgb[2]**2)
+        if denominator == 0:
+            return None
+        r = rgb[0]/denominator
+        g = rgb[1]/denominator
+        b = rgb[2]/denominator
+
+        diffR=(mR-r)/sR + 0.05  
+        diffG=(mG-g)/sG + 0.05
+        diffB=(mB-b)/sB + 0.05
+        std_dist=math.sqrt(diffR**2 + diffG**2 + diffB**2)
+        if std_dist < 4:
+            return color_names[i]
+            
+    return None
+
 def check_color(rgb):
     means = [[0.987566201, 0.133367577, 0.080584644], [0.96937965, 0.2273774, 0.08586806], 
              [0.82395664, 0.55897973, 0.09190268], [0.407351948, 0.884058889, 0.227519999],
@@ -64,7 +98,7 @@ def orient():
     elif prev_color=='RED':
         MOTORL.set_power(-12)
         MOTORR.set_power(12)
-        time.sleep(1.5)
+        time.sleep(1)
         MOTORR.set_power(0)
         MOTORL.set_power(0)
         
@@ -77,66 +111,22 @@ def orient():
         
     
 def find_zone():
-    print("finding zone")
-    # turn for a bit
-#     MOTORL.set_power(30)
-#     MOTORR.set_power(-30)
-#     time.sleep(0.2)
+    print("initiating finding zone sequence")
     rgb = SIDE_COLOR_SENSOR.get_rgb()
-    color = check_color(rgb)
-        # go forward and look for color
-#         print("going forward")
-#         MOTORL.set_power(20)
-#         MOTORR.set_power(20)
-#       time.sleep(1)
-        #print("going forward done")
-#         t_end = time.time() + 2
-#         while time.time() < t_end:
-#             print(time.time())
-            # check for the color
+    color = side_check_color(rgb)
     
-    if color == None and prev_color == "BLUE": #swivel around backwards to find zone
+    if color == None: #swivel around backwards to find zone
         while color == None:
-            print("shifting cuz prev blue")
-            MOTORL.set_power(20)
-            MOTORR.set_power(-20)
-            time.sleep(0.25)
-            rgb = SIDE_COLOR_SENSOR.get_rgb()
-            color = check_color(rgb)
-    elif color == None and prev_color == "RED": #swivel around backwards to find zone
-        while color == None:
-            print("shifting cuz prev red")
-            MOTORL.set_power(-20)
-            MOTORR.set_power(20)
+            print("Looking for zone")
+            MOTORR.set_power(15)
+            MOTORL.set_power(-15)
             time.sleep(0.25)
             rgb = SIDE_COLOR_SENSOR.get_rgb()
             color = check_color(rgb)
 
     print("found deliv zone color:"+ color)
-#           MOTORL.set_power(0)
-#           MOTORR.set_power(0)
     return color
-        
-#         cond=True
-#         while cond==True: #starting looking for deliv color again
-#             rgb = COLOR_SENSOR.get_rgb()
-#             while check_color(rgb) != None: #move forward until you detect white
-#                 MOTORR.set_power(10)
-#                 MOTORL.set_power(10)
-#                 cond=False
-#         MOTORR.set_power(0)
-#         MOTORL.set_power(0) #stop right when u exit deliv zone (drop block behind)
-#         print("out of deliv zone!")
-        
-#         print("loop done")
-#         # go back to original position
-#         MOTORL.set_power(-20)
-#         MOTORR.set_power(-20)
-#         time.sleep(2)
-#         # turn for a bit
-#         MOTORL.set_power(30)
-#         MOTORR.set_power(-30)
-#         time.sleep(0.2)
+
 
 def rotate_platform(color):
     if color=="RED":
@@ -151,16 +141,19 @@ def rotate_platform(color):
         angle=240
     elif color=="PURPLE":
         angle=300
-    MOTORPLAT.reset_encoder()
-    return angle
-
-def test_rotate():
-    MOTORPLAT.set_limits(30)
-    MOTORPLAT.set_position(360)
+    MOTORPLAT.set_position(angle)
     time.sleep(1.15)
     kick_block()
-    time.sleep(1.5)
+    time.sleep(1.15)
     MOTORPLAT.set_position(0)
+
+# def test_rotate():
+#     MOTORPLAT.set_limits(30)
+#     MOTORPLAT.set_position(360)
+#     time.sleep(1.15)
+#     kick_block()
+#     time.sleep(1.5)
+#     MOTORPLAT.set_position(0)
 
 def kick_block():
     reset_motor()
@@ -175,7 +168,7 @@ def reset_motor():
     MOTORL.set_power(0)
     MOTORR.set_power(0)
     
-def move_out_of_zone():
+def move_out_of_zone(color):
     rgb = SIDE_COLOR_SENSOR.get_rgb()
     color = check_color(rgb)
     while color != None:
@@ -188,7 +181,7 @@ def move_out_of_zone():
     MOTORL.set_power(0)
     print("out of zone!")
     MOTORPLAT.set_limits(20)
-    test_rotate()
+    rotate_platform() # unloading mechanism
     time.sleep(2)
     
 # main entry point
@@ -225,7 +218,7 @@ try:
                 print("looking for zone")
                 orient() #function by matt
                 zone_color = find_zone()
-                move_out_of_zone()
+                move_out_of_zone(zone_color)
                 blocks_delivered+=1
                 time.sleep(2)
 

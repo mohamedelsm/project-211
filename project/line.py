@@ -82,29 +82,29 @@ def check_color(rgb):
         diffG=(mG-g)/sG + 0.05
         diffB=(mB-b)/sB + 0.05
         std_dist=math.sqrt(diffR**2 + diffG**2 + diffB**2)
-        if std_dist < 4:
+        if std_dist < 6:
             return color_names[i]
             
     return None
 
 def orient():
-    if prev_color=='BLUE':
+    if prev_color=='BLUE' or prev_color == None:
         MOTORR.set_power(-20)
         MOTORL.set_power(20)
-        time.sleep(1.5)
+        time.sleep(1)
         MOTORR.set_power(0)
         MOTORL.set_power(0)
     
-    elif prev_color=='RED':
-        MOTORL.set_power(-12)
-        MOTORR.set_power(12)
-        time.sleep(1)
+    elif prev_color == 'RED':
+        MOTORL.set_power(-20)
+        MOTORR.set_power(20)
+        time.sleep(0.5)
         MOTORR.set_power(0)
         MOTORL.set_power(0)
         
     MOTORR.set_power(20)
     MOTORL.set_power(20)
-    time.sleep(1)
+    time.sleep(0.75)
     MOTORR.set_power(0)
     MOTORL.set_power(0)
     time.sleep(2)
@@ -118,31 +118,33 @@ def find_zone():
     if color == None: #swivel around backwards to find zone
         while color == None:
             print("Looking for zone")
-            MOTORR.set_power(15)
+            MOTORR.set_power(20)
             MOTORL.set_power(-15)
             time.sleep(0.25)
             rgb = SIDE_COLOR_SENSOR.get_rgb()
-            color = check_color(rgb)
+            color = side_check_color(rgb)
 
     print("found deliv zone color:"+ color)
     return color
 
 
-def rotate_platform(color):
-    if color=="RED":
+def rotate_platform(zone_color):
+    if zone_color=="RED":
         angle=0
-    elif color=="ORANGE":
+    elif zone_color=="ORANGE":
         angle=60
-    elif color=="YELLOW":
+    elif zone_color=="YELLOW":
         angle=120
-    elif color=="GREEN":
+    elif zone_color=="GREEN":
         angle=180
-    elif color=="BLUE":
+    elif zone_color=="BLUE":
         angle=240
-    elif color=="PURPLE":
+    elif zone_color=="PURPLE":
         angle=300
+    MOTORPLAT.reset_encoder()
+    MOTORPLAT.set_limits(30)
     MOTORPLAT.set_position(angle)
-    time.sleep(1.15)
+    time.sleep(1.25)
     kick_block()
     time.sleep(1.15)
     MOTORPLAT.set_position(0)
@@ -157,7 +159,7 @@ def rotate_platform(color):
 
 def kick_block():
     reset_motor()
-    MOTORKICK.set_limits(20)
+    MOTORKICK.set_limits(40)
     MOTORKICK.set_position(135)
     time.sleep(1)
     MOTORKICK.set_position(0)
@@ -168,38 +170,65 @@ def reset_motor():
     MOTORL.set_power(0)
     MOTORR.set_power(0)
     
-def move_out_of_zone(color):
+def move_out_of_zone(zone_color):
     rgb = SIDE_COLOR_SENSOR.get_rgb()
-    color = check_color(rgb)
+    color = side_check_color(rgb)
     while color != None:
         MOTORR.set_power(10)
         MOTORL.set_power(10)
         time.sleep(0.4)
         rgb = SIDE_COLOR_SENSOR.get_rgb()
-        color = check_color(rgb)
+        color = side_check_color(rgb)
     MOTORR.set_power(0)
     MOTORL.set_power(0)
     print("out of zone!")
     MOTORPLAT.set_limits(20)
-    rotate_platform() # unloading mechanism
-    time.sleep(2)
+    rotate_platform(zone_color) # unloading mechanism
+    time.sleep(1)
+
+def go_back_on_track():
+    print("looking for track")
+    MOTORL.set_power(-20)
+    MOTORR.set_power(20)
     
+    rgb = COLOR_SENSOR.get_rgb()
+    color = check_color(rgb)
+    #if color == None: #swivel around backwards to find zone
+    while True:
+        rgb = COLOR_SENSOR.get_rgb()
+        color = check_color(rgb)
+        print(color)
+        if color == "RED":
+            MOTORL.set_power(-30)
+            MOTORR.set_power(30)
+            return
+        elif color == "BLUE":
+            prev_color=color
+            print("blue")
+            MOTORL.set_power(30)
+            MOTORR.set_power(-30)
+            return
+#           print(color)
+        #time.sleep(0.25)
+    
+
 # main entry point
 try:
     blocks_delivered=0
     while blocks_delivered<6:
         # motor initialization
         print("initialzing motors\n")
+        prev_color=None
         MOTORL.set_limits(POWER_LIMIT, SPEED_LIMIT)
         MOTORR.set_limits(POWER_LIMIT, SPEED_LIMIT)
         MOTORL.set_power(-20)
         MOTORR.set_power(20)
         MOTORKICK.reset_encoder()
-        while True:
+        while blocks_delivered<6:
             rgb = COLOR_SENSOR.get_rgb()
-            print(rgb)
+            # print(rgb)
             color = check_color(rgb)
-            print(color)
+            #print(color)
             if color == "RED":
                 print("red")
                 prev_color=color
@@ -220,7 +249,8 @@ try:
                 zone_color = find_zone()
                 move_out_of_zone(zone_color)
                 blocks_delivered+=1
-                time.sleep(2)
+                print("blocks delivered = " + str(blocks_delivered))
+                go_back_on_track()
 
                 # test_rotate()
                 # #rotate_platform(color)
@@ -229,18 +259,45 @@ try:
                 # MOTORL.set_position(90)
                 # MOTORR.set_position(90)
                 # continue
-
             else:
-                MOTORL.set_power(10)
-                MOTORR.set_power(35)
+                MOTORL.set_power(20)
+                MOTORR.set_power(20)
             
     #         if color!= None and color!="GREEN":
     #             prev_color=color
     #             print("HELLO"+ str(prev_color))
-            
-            print("Blocks left: "+str((6-blocks_delivered)))
+            #print("Blocks left: "+str((6-blocks_delivered)))
             time.sleep(0.1)
             # do smth with the rgb values
+    print("going back to start")
+    # go forward a bit
+    MOTORL.set_power(20)
+    MOTORR.set_power(20)
+    time.sleep(1)
+    print("doing 360")
+    MOTORL.set_power(40)
+    MOTORR.set_power(-40)
+    time.sleep(2)
+    while True:
+        rgb = COLOR_SENSOR.get_rgb()
+        # print(rgb)
+        color = check_color(rgb)
+        #print(color)
+        if color == "RED":
+            print("red")
+            prev_color=color
+            MOTORL.set_power(30)
+            MOTORR.set_power(-30)
+        elif color == "BLUE":
+            prev_color=color
+            print("blue")
+        elif color == "YELLOW":
+            MOTORL.set_power(0)
+            MOTORR.set_power(0)
+            
+    
+    
+    
 
         
 except KeyboardInterrupt:

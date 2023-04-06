@@ -1,3 +1,4 @@
+from utils import sound
 from utils.brick import BP, Motor, TouchSensor, EV3ColorSensor, wait_ready_sensors, reset_brick 
 import time
 import math
@@ -8,16 +9,11 @@ MOTORPLAT = Motor("C")
 MOTORKICK = Motor("B")
 COLOR_SENSOR = EV3ColorSensor(4)
 SIDE_COLOR_SENSOR = EV3ColorSensor(1)
+TOUCH_SENSOR = TouchSensor(3)
+SOUND = sound.Sound(duration=1, pitch="A4", volume=100)
 
 POWER_LIMIT = 40
 SPEED_LIMIT = 360
-
-RW=0.028
-RB=0.043
-ORIENTTODEG = RB/RW
-# set motor limits
-print("sensors initializing")
-wait_ready_sensors()
 
 def side_check_color(rgb):
     means = [[0.98269282, 0.166543148, 0.079804332], [0.956722739, 0.279694185, 0.075963383], 
@@ -25,7 +21,7 @@ def side_check_color(rgb):
              [0.368746318, 0.608397841, 0.698980325], [0.963167792, 0.175536085, 0.201083857]]
     std_dev = [[0.004002433, 0.016609388, 0.01300176], [0.00668939, 0.023818665, 0.008397344],
                [0.00948927, 0.009867564, 0.010167148], [0.027895648, 0.014312723, 0.021143952], 
-               [0.05831743, 0.019102171, 0.039416204], [0.008729752, 0.025987929, 0.017576094]]
+               [0.05831743, 0.019102171, 0.039416204], [0.018729752, 0.035987929, 0.027576094]]
     
     color_names = ["RED", "ORANGE","YELLOW","GREEN","BLUE","PURPLE"]
 
@@ -87,7 +83,7 @@ def check_color(rgb):
             
     return None
 
-def orient():
+def orient(prev_color):
     if prev_color=='BLUE' or prev_color == None:
         MOTORR.set_power(-20)
         MOTORL.set_power(20)
@@ -132,11 +128,11 @@ def rotate_platform(zone_color):
     if zone_color=="RED":
         angle=0
     elif zone_color=="ORANGE":
-        angle=60
+        angle=70
     elif zone_color=="YELLOW":
         angle=120
     elif zone_color=="GREEN":
-        angle=180
+        angle=195
     elif zone_color=="BLUE":
         angle=240
     elif zone_color=="PURPLE":
@@ -149,17 +145,9 @@ def rotate_platform(zone_color):
     time.sleep(1.15)
     MOTORPLAT.set_position(0)
 
-# def test_rotate():
-#     MOTORPLAT.set_limits(30)
-#     MOTORPLAT.set_position(360)
-#     time.sleep(1.15)
-#     kick_block()
-#     time.sleep(1.5)
-#     MOTORPLAT.set_position(0)
-
 def kick_block():
     reset_motor()
-    MOTORKICK.set_limits(45)
+    MOTORKICK.set_limits(35)
     MOTORKICK.set_position(135)
     time.sleep(1)
     MOTORKICK.set_position(0)
@@ -197,137 +185,188 @@ def go_back_on_track():
     while True:
         rgb = COLOR_SENSOR.get_rgb()
         color = check_color(rgb)
-        print(color)
         if color == "RED":
             MOTORL.set_power(-30)
             MOTORR.set_power(30)
             return
         elif color == "BLUE":
-            prev_color=color
-            print("blue")
             MOTORL.set_power(30)
             MOTORR.set_power(-30)
             return
-#           print(color)
-        #time.sleep(0.25)
-    
-def do_360():
-    
 
-# main entry point
-try:
+def do_360(speed):
+    print("doing 360")
+    rgb = COLOR_SENSOR.get_rgb()
+    color = check_color(rgb)
+    while color != "BLUE":
+        if color == "GREEN":
+            print("green")
+            rgb = COLOR_SENSOR.get_rgb()
+            color = check_color(rgb)
+            while color == "GREEN":
+                rgb = COLOR_SENSOR.get_rgb()
+                color = check_color(rgb)
+                MOTORL.set_power(-1 * speed)
+                MOTORR.set_power(speed)
+                time.sleep(0.1)
+            print("done green")
+            return    
+        #go_backwards(0.5)
+        rgb = COLOR_SENSOR.get_rgb()
+        color = check_color(rgb)
+        MOTORL.set_power(-1 * speed)
+        MOTORR.set_power(speed)
+        time.sleep(0.1)
+#     MOTORL.set_power(-30)
+#     MOTORR.set_power(30)
+#     time.sleep(4.5)
+    MOTORL.set_power(0)
+    MOTORR.set_power(0)
+
+def return_to_loading():
+    print("returning to loading zone")
+    prev_color = "BLUE"
+    while True:
+        rgb = COLOR_SENSOR.get_rgb()
+        color = check_color(rgb)
+        if color == "RED":
+            prev_color=color
+            MOTORL.set_power(30)
+            MOTORR.set_power(-30)
+        elif color == "BLUE":
+            prev_color=color
+            MOTORL.set_power(-30)
+            MOTORR.set_power(30)
+        elif color == "GREEN":
+            if prev_color == "RED":
+                MOTORL.set_power(30)
+                MOTORR.set_power(-5)
+            elif prev_color == "BLUE":
+                MOTORL.set_power(-5)
+                MOTORR.set_power(30)
+            #time.sleep(0.5)    
+#             MOTORL.set_power(30)
+#             MOTORR.set_power(30)
+#             time.sleep(0.25)
+        elif color == "YELLOW":
+            print("found beginning")
+            MOTORL.set_power(0)
+            MOTORR.set_power(0)
+            return
+        else:
+            MOTORL.set_power(30)
+            MOTORR.set_power(30)
+        time.sleep(0.1)
+
+def deliver_blocks():
     blocks_delivered=0
-    while blocks_delivered<6:
+    while blocks_delivered < 6:
         # motor initialization
         print("initialzing motors\n")
-        prev_color=None
+        prev_color = None
         MOTORL.set_limits(POWER_LIMIT, SPEED_LIMIT)
         MOTORR.set_limits(POWER_LIMIT, SPEED_LIMIT)
         MOTORL.set_power(-25)
         MOTORR.set_power(25)
         MOTORKICK.reset_encoder()
-        while blocks_delivered<6:
+        while blocks_delivered < 6:
             rgb = COLOR_SENSOR.get_rgb()
-            # print(rgb)
             color = check_color(rgb)
-            #print(color)
             if color == "RED":
-                print("red")
-                prev_color=color
+                prev_color = color
                 MOTORL.set_power(-30)
                 MOTORR.set_power(30)
             elif color == "BLUE":
-                prev_color=color
-                print("blue")
+                prev_color = color
                 MOTORL.set_power(30)
                 MOTORR.set_power(-30)
             elif color == "GREEN":
-                print("green")
                 reset_motor()
                 time.sleep(0.25) #stop for a sec to emphasize sensing green
                 # find the zone
                 print("looking for zone")
-                orient() #function by matt
+                orient(prev_color) #function by matt
                 zone_color = find_zone()
                 move_out_of_zone(zone_color)
-                blocks_delivered+=1
+                blocks_delivered += 1
                 print("blocks delivered = " + str(blocks_delivered))
-                go_back_on_track()
-
-                # test_rotate()
-                # #rotate_platform(color)
-                # kick_block()
-                # time.sleep(3)
-                # MOTORL.set_position(90)
-                # MOTORR.set_position(90)
-                # continue
+                if blocks_delivered != 6:
+                    go_back_on_track()
             else:
                 MOTORL.set_power(25)
                 MOTORR.set_power(25)
-            
-    #         if color!= None and color!="GREEN":
-    #             prev_color=color
-    #             print("HELLO"+ str(prev_color))
-            #print("Blocks left: "+str((6-blocks_delivered)))
             time.sleep(0.1)
-            # do smth with the rgb values
-    print("going back to start")
-    # go forward a bit
-    MOTORL.set_power(30)
-    MOTORR.set_power(30)
-    time.sleep(1.5)
-    print("doing 360")
-    MOTORL.set_power(-30)
-    MOTORR.set_power(30)
-    time.sleep(4.5)
-    print("done rotating")
-    MOTORL.set_power(30)
-    MOTORR.set_power(30)
-    time.sleep(0)
-    while True:
-        print("while loopp")
-        rgb = COLOR_SENSOR.get_rgb()
-        # print(rgb)
-        color = check_color(rgb)
-        #print(color)
-        if color == "RED":
-            print("red")
-            prev_color=color
-            MOTORL.set_power(30)
-            MOTORR.set_power(-30)
-        elif color == "BLUE":
-            prev_color=color
-            MOTORL.set_power(-30)
-            MOTORR.set_power(30)
-            print("blue")
             
-        elif color == "GREEN":
-            if prev_color == "RED":
-                print("red")
-                MOTORL.set_power(30)
-                MOTORR.set_power(-30)
-            elif prev_color == "BLUE":
-                print("blue")
-                MOTORL.set_power(-30)
-                MOTORR.set_power(30)
-            time.sleep(0.25)    
-            MOTORL.set_power(30)
-            MOTORR.set_power(30)
-            time.sleep(0.75)
-        elif color == "YELLOW":
-            print("yellow")
-            MOTORL.set_power(0)
-            MOTORR.set_power(0)
-            print("doing 360")
-            MOTORL.set_power(-30)
-            MOTORR.set_power(30)
-            time.sleep(4.5)
-            print("done rotating")
-            exit()
-        else:
-            MOTORL.set_power(30)
-            MOTORR.set_power(30)
+def turn_end(speed):
+    print("turning at the end")
+    # turn till you read blue
+    rgb = COLOR_SENSOR.get_rgb()
+    color = check_color(rgb)
+    while color != "BLUE":
+        rgb = COLOR_SENSOR.get_rgb()
+        color = check_color(rgb)
+        MOTORL.set_power(-1 * speed)
+        MOTORR.set_power(speed)
+        time.sleep(0.1)
+        
+    #go back
+    MOTORL.set_power(-30)
+    MOTORR.set_power(-10)
+    time.sleep(1)
+    
+    # turn till it sees red
+    rgb = COLOR_SENSOR.get_rgb()
+    color = check_color(rgb)
+    while color != "RED":
+        rgb = COLOR_SENSOR.get_rgb()
+        color = check_color(rgb)
+        MOTORL.set_power(-1 * speed)
+        MOTORR.set_power(speed)
+        time.sleep(0.1)
+        
+    
+def play_sound():
+    SOUND.play()
+    SOUND.wait_done()
+    
+def go_forward(t):
+    MOTORL.set_power(25)
+    MOTORR.set_power(25)
+    time.sleep(t)
+    
+def go_backwards(t):
+    MOTORL.set_power(-25)
+    MOTORR.set_power(-25)
+    time.sleep(t)
+    
 
+try:
+    # set motor limits
+    print("sensors initializing")
+    wait_ready_sensors()
+    print("done initializing")
+    is_pressed = False
+    while True:
+        if TOUCH_SENSOR.is_pressed():
+            # set button pressed to true
+            is_pressed = True
+            rgb = COLOR_SENSOR.get_rgb()
+            
+        if not TOUCH_SENSOR.is_pressed() and is_pressed == True:
+            print("button pressed")
+            is_pressed = False
+            deliver_blocks()
+            go_forward(1.5)
+            turn_end(30)
+            return_to_loading()
+            fggo_forward(1.75)
+            do_360(25)
+            MOTORL.set_power(20)
+            MOTORR.set_power(-20)
+            time.sleep(1.5)
+            go_backwards(1.5)
+            reset_motor()
+            play_sound()
         
 except KeyboardInterrupt:
     print("Ending by keyboard interrupt")
